@@ -44,7 +44,6 @@
 <script lang="ts" setup>
 import { faRotateRight } from '@fortawesome/free-solid-svg-icons'
 import { faFolderOpen } from '@fortawesome/free-regular-svg-icons'
-import { pull } from 'lodash'
 import { computed, ref } from 'vue'
 import { commonStore } from '@/stores/commonStore'
 import { useRouter } from '@/composables/useRouter'
@@ -138,7 +137,8 @@ onRouteChanged(async route => {
 })
 
 eventBus.on('SONGS_DELETED', async deletedSongs => {
-  pull(songs.value, ...deletedSongs)
+  const deletedIds = new Set(deletedSongs.map(s => s.id))
+  songs.value = songs.value.filter(s => !deletedIds.has(s.id))
 
   if (!songs.value.length) {
     resetState()

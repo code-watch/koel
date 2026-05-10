@@ -23,6 +23,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - tailwindcss (TAILWINDCSS) - v3
 
 ## Conventions
+- **Always infer from the existing codebase before writing — and ask when no precedent exists.** Before any new identifier, mock/test pattern, store/service call shape, form wiring, helper choice, spelling, or file layout, grep `app/` and `resources/assets/js/` for how it has been done before, and copy the existing shape exactly. If no precedent exists in the repo, **stop and ask the user** instead of defaulting to whatever you'd write from training data or personal habit. The codebase is the source of truth for *how things are done*, not just *what exists*. "I should have looked" is the symptom; not looking first is the root cause.
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, and naming.
 - Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
 - Check for existing components to reuse before writing a new one.
@@ -238,6 +239,9 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - Traits must be placed in a `Concerns` subfolder (namespace) relative to their consumers (e.g. `App\Ai\Tools\Concerns\PlaysMusic`).
 - Interfaces must be placed in a `Contracts` subfolder (namespace) relative to their consumers (e.g. `App\Ai\Tools\Contracts\SomeInterface`).
 
+## Spelling
+- Use US English spelling for all identifiers (PHP method/class/property names, TS/Vue variables and components), comments, docstrings, doc pages, and user-visible strings: `serialize` / `serializer` (not `serialise`), `color` (not `colour`), `initialize` (not `initialise`), `behavior` (not `behaviour`), `organize` / `organization`, `favorite`, `analyze`. Koel's codebase — and PHP's SPL (`JsonSerializable`) — is uniformly American; don't drift British by reflex.
+
 ## Self-Explanatory Code
 - Code should read on its own. If a piece of code needs a comment to be understood, that's a signal the code is wrong, not that the comment is needed — refactor it: extract a named helper, rename a variable to encode intent, lift a condition into a named flag, pull a block into a small function. Use a comment only when refactoring genuinely can't carry the intent (a hidden invariant, a workaround tied to a specific external bug, behaviour a reader would otherwise misjudge). Never write comments that narrate the next line, summarise the surrounding block, or restate what well-named identifiers already say.
 - Don't use single-letter variable names. The only allowed ones are `i` / `j` for loop counters and `h` for the test harness. For everything else (callback params, destructured fields, lambda args, etc.) pick a name that says what it is.
@@ -295,6 +299,12 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ## Vue Template Conventions
 - Always use Vue's same-name shorthand for bindings: `:foo` instead of `:foo="foo"`. This applies to props, components, and any v-bind where the attribute name matches the variable name.
+
+## Vue Forms
+- Any Vue surface that takes user input and commits it on submit must use the `useForm` composable from `@/composables/useForm` — including inline composers, popovers, and mini name-prompts that aren't named `*Form.vue`. Don't roll your own `ref<string>('')` + manual submit handling.
+- Pair it with the canonical wiring: `<form @submit.prevent="handleSubmit" @keydown.esc="maybeClose">`, inputs use `v-koel-focus` (not manual `onMounted` focus) and `required` (not manual `:disabled`), Save is `<Btn type="submit">`, Cancel is `<Btn type="button" @click.prevent="maybeClose">`, and `maybeClose` does `if (isPristine() || (await showConfirmDialog(...))) emit('cancel')`.
+- For purely-local submits (no server call), pass `useOverlay: false` and have `onSubmit` just emit. Use the optional `validator` callback for non-HTML5 rules (e.g. trim/whitespace).
+- Read `resources/assets/js/components/playlist/CreatePlaylistFolderForm.vue` before writing a new form — that's the reference shape.
 
 ## Vue Component Styling
 - Put shared/base Tailwind classes directly on the HTML element via the `class` attribute.

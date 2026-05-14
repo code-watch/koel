@@ -1,43 +1,16 @@
-@import './partials/vars.pcss' layer(base);
-@import './partials/shared.pcss' layer(base);
+@import './vendor/reset.pcss';
+@import '@modules/nouislider/distribute/nouislider.min.css';
+@import './partials/vars.pcss';
+@import './partials/mixins.pcss';
+@import './partials/shared.pcss';
 
-@import 'tailwindcss';
-
-@config "../../../tailwind.config.js";
-
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   body,
   html {
     @apply h-screen relative;
-  }
-}
-
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop {
-    padding-block: revert;
-    padding-inline: revert;
-    margin-block: revert;
-    margin-inline: revert;
   }
 }

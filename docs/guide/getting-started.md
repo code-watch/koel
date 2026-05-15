@@ -1,5 +1,5 @@
 ---
-description: Requirements, installation methods (pre-compiled, source, Docker), configuration, upgrading, and downgrading Koel.
+description: Requirements, installation methods (pre-compiled, source, Docker), configuration, running with FrankenPHP (binary + systemd), upgrading, and downgrading Koel.
 ---
 
 # Getting Started
@@ -63,10 +63,10 @@ In both cases, you should now be able to visit http://localhost:8000 in your bro
 
 ::: warning Use a proper webserver
 http://localhost:8000 is only the _development_ server for Koel (or rather, Laravel).
-For optimal performance, you'll want to set up a production server (Apache, nginx, Caddy etc.) and point it to the
-`public` directory of Koel.
-Koel provides a sample configuration for nginx in `nginx.conf.example`,
-but the process shouldn't be any different from that of a standard PHP application.
+For production, point a proper server (Apache, nginx, Caddy, etc.) at Koel's `public/`
+directory — the process is no different from any standard PHP application.
+Koel ships starter configs at the project root: `nginx.conf.example` for nginx + PHP-FPM,
+and `Caddyfile.example` for [FrankenPHP](#running-with-frankenphp).
 :::
 
 ### Using Docker
@@ -91,6 +91,97 @@ Any non-empty value other than `log` or `array` is considered a proper mailer.
 As such, if you don't need email-required features, you can simply set `MAIL_MAILER` to `log` or `array` and leave the
 rest of the mailer-related values empty,
 and Koel will know to remove/disable these features.
+
+## Running with FrankenPHP
+
+[FrankenPHP](https://frankenphp.dev) is a modern PHP application server that bundles the webserver (Caddy) and the PHP
+runtime into a single binary — replacing the typical nginx + PHP-FPM pair with one process and giving you automatic
+HTTPS out of the box. Koel ships a `Caddyfile.example` at the project root that wires it up correctly.
+
+::: info Note
+FrankenPHP is only the runtime — you still need a fully prepared Koel install (i.e. `vendor/` from `composer install`
+and the compiled frontend in `public/build/`) before it has anything to serve. Use either of the installation methods
+above (pre-compiled archive or building from source) first.
+:::
+
+### Install FrankenPHP
+
+Pre-built binaries are published at [frankenphp.dev/docs/#install](https://frankenphp.dev/docs/#install). On Linux,
+the one-line installer fetches the right binary for your architecture:
+
+```bash
+curl https://frankenphp.dev/install.sh | sh
+sudo mv frankenphp /usr/local/bin/
+```
+
+### Configure the Caddyfile
+
+From the Koel project root:
+
+```bash
+cp Caddyfile.example Caddyfile
+```
+
+Edit `Caddyfile` and replace `localhost` with the domain you'll serve from. Using a real public domain enables automatic
+HTTPS via Let's Encrypt.
+
+### Run it
+
+```bash
+frankenphp run
+```
+
+That's it — Koel is now served on port 443 (and 80, redirected to HTTPS).
+
+### Run as a systemd service (Ubuntu)
+
+For a production deployment, run FrankenPHP under `systemd` so it starts on boot and restarts on failure. Create
+`/etc/systemd/system/koel.service`:
+
+```ini
+[Unit]
+Description=Koel (FrankenPHP)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/koel
+ExecStart=/usr/local/bin/frankenphp run
+Restart=on-failure
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Adjust `WorkingDirectory` and `User` to match where Koel lives on your host. Then enable and start it:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now koel
+sudo journalctl -u koel -f
+```
+
+### Behind a reverse proxy
+
+If you're already running nginx (or another reverse proxy) and want to use FrankenPHP only as the PHP runtime, bind it
+to a loopback port and disable Caddy's automatic HTTPS. Replace the site block in `Caddyfile` with:
+
+```caddyfile
+:8001 {
+	bind 127.0.0.1
+	root public/
+	encode zstd gzip
+	php_server {
+		try_files {path} index.php
+	}
+}
+```
+
+…and add `auto_https off` to the global block. Then point your existing reverse proxy at `127.0.0.1:8001` and let it
+terminate TLS as before.
 
 ## Upgrade
 
